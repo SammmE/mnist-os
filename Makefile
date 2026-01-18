@@ -1,40 +1,35 @@
-C_SOURCES = $(wildcard src/*.c)
-HEADERS = $(wildcard src/*.h)
+# Ensure these point to your actual cross-compiler binaries
+CC = i686-elf-gcc
+LD = i686-elf-ld
+ASM = nasm
+
+SRC_DIR = src
 BUILD_DIR = build
-OBJ = $(patsubst src/%.c, $(BUILD_DIR)/%.o, $(C_SOURCES))
 
-CC = gcc
-GDB = gdb
-CFLAGS = -m32 -fno-pie -ffreestanding -c -g
-LDFLAGS = -m elf_i386 -T src/link.ld
+CFLAGS = -ffreestanding -m32 -g -c -I$(SRC_DIR)
 
-# Default make target
 all: $(BUILD_DIR)/os-image.bin
 
-# Run in QEMU
-run: all
-	qemu-system-x86_64 -drive format=raw,file=$(BUILD_DIR)/os-image.bin
+$(BUILD_DIR)/boot.bin: $(SRC_DIR)/boot.asm
+	@mkdir -p $(BUILD_DIR)
+	$(ASM) -f bin $< -o $@
 
-# Build the os image
-$(BUILD_DIR)/os-image.bin: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/kernel.bin
-	dd if=/dev/zero of=$@ bs=512 count=2048
-	dd if=$(BUILD_DIR)/boot.bin of=$@ conv=notrunc
-	dd if=$(BUILD_DIR)/kernel.bin of=$@ seek=1 conv=notrunc
+$(BUILD_DIR)/k_entry.o: $(SRC_DIR)/k_entry.asm
+	@mkdir -p $(BUILD_DIR)
+	$(ASM) -f elf $< -o $@
 
-# Compile C kernel
-$(BUILD_DIR)/kernel.bin: $(OBJ)
-	ld -o $@ $^ $(LDFLAGS)
-
-# Compile C source files
-$(BUILD_DIR)/%.o: src/%.c ${HEADERS}
-	mkdir -p $(BUILD_DIR)
+$(BUILD_DIR)/kernel.o: $(SRC_DIR)/kernel.c
+	@mkdir -p $(BUILD_DIR)
 	$(CC) $(CFLAGS) $< -o $@
 
-# Assemble bootloader
-$(BUILD_DIR)/boot.bin: src/boot.asm
-	mkdir -p $(BUILD_DIR)
-	nasm $< -f bin -o $@
+$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/k_entry.o $(BUILD_DIR)/kernel.o
+	$(LD) -o $@ -Ttext 0x1000 $^ --oformat binary
 
-# Clean
+$(BUILD_DIR)/os-image.bin: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/kernel.bin
+	cat $^ > $@
+
+run: $(BUILD_DIR)/os-image.bin
+	qemu-system-i386 -fda $(BUILD_DIR)/os-image.bin
+
 clean:
 	rm -rf $(BUILD_DIR)
