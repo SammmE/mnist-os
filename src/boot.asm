@@ -14,7 +14,8 @@ mov sp, bp
 mov bx, MSG_LOAD_KERNEL
 call print_string
 
-call switch_to_protected_mode
+call load_kernel
+call switch_to_pm
 
 jmp $
 
@@ -24,9 +25,10 @@ jmp $
 %include "src/boot_sect_switch.asm"
 
 [bits 32]
-BEGIN_PROTECTED_MODE:
+BEGIN_PM:
     ; jump to kernel entry point
-    call KERNEL_OFFSET:0x0000
+    mov eax, KERNEL_OFFSET
+    call eax
     jmp $
 
 BOOT_DRIVE      db 0

@@ -1,11 +1,8 @@
-// We will write directly to Video Memory to print "X"
+#include "drivers/screen.h"
+
 void kmain() {
-    // 0xB8000 is the address of the text screen in video memory
-    char* video_memory = (char*) 0xb8000;
-    
-    // The first byte is the character
-    *video_memory = 'X'; 
-    
-    // The second byte is the color (White on Black)
-    *(video_memory + 1) = 0x0f; 
+    clear_screen();
+    kprint_at("Hello, World! Welcome to MNIST-OS", 10, 5);
+    kprint("\nThis text is printed on the next line.");
+    kprint("\nAnd this wraps around if it gets too long to fit on one single line in the screen buffer.");
 }
