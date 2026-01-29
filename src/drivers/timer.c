@@ -1,8 +1,8 @@
 #include "timer.h"
 #include "ports.h"
 #include "screen.h"
-#include "../isr.h"
-#include "../idt.h"
+#include "../interrupt/isr.h"
+#include "../interrupt/idt.h"
 #include <stdint.h>
 
 // Global tick counter

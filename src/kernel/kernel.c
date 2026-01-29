@@ -1,8 +1,8 @@
-#include "drivers/screen.h"
-#include "drivers/timer.h"
-#include "drivers/keyboard.h"
-#include "memory.h"
-#include "idt.h"
+#include "../drivers/screen.h"
+#include "../drivers/timer.h"
+#include "../drivers/keyboard.h"
+#include "../memory/memory.h"
+#include "../interrupt/idt.h"
 
 // Helper function to convert int to string
 static void int_to_str(int num, char* str) {

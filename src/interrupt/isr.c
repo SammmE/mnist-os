@@ -1,6 +1,6 @@
 #include "isr.h"
 #include "idt.h"
-#include "drivers/screen.h"
+#include "../drivers/screen.h"
 #include <stdint.h>
 
 // Array of interrupt handler function pointers

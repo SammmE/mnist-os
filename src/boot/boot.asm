@@ -22,11 +22,11 @@ call switch_to_pm
 
 jmp $
 
-%include "src/boot_sect_mem.asm"
-%include "src/boot_sect_disk.asm"
-%include "src/boot_sect_print.asm"
-%include "src/boot_sect_gdt.asm"
-%include "src/boot_sect_switch.asm"
+%include "src/boot/mem.asm"
+%include "src/boot/disk.asm"
+%include "src/boot/print.asm"
+%include "src/boot/gdt.asm"
+%include "src/boot/switch.asm"
 
 [bits 32]
 BEGIN_PM:

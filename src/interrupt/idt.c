@@ -1,6 +1,6 @@
 #include "idt.h"
 #include "isr.h"
-#include "drivers/ports.h"
+#include "../drivers/ports.h"
 #include <stdint.h>
 
 // IDT array (256 entries)
