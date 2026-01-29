@@ -10,6 +10,9 @@ mov [BOOT_DRIVE], dl
 mov bp, 0x9000
 mov sp, bp
 
+; detect memory
+call detect_memory
+
 ; load kernel
 mov bx, MSG_LOAD_KERNEL
 call print_string
@@ -19,6 +22,7 @@ call switch_to_pm
 
 jmp $
 
+%include "src/boot_sect_mem.asm"
 %include "src/boot_sect_disk.asm"
 %include "src/boot_sect_print.asm"
 %include "src/boot_sect_gdt.asm"
