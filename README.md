@@ -6,8 +6,8 @@
 - [x] Enter 32-bit Protected Mode
 - [x] Kernel Entry Point
 - [x] Basic Screen Driver
-- [] Physical Memory Manager
-- [] Heap Allocator
+- [x] Physical Memory Manager
+- [x] Heap Allocator
 - [] Interrupt Service Routines
 - [] ATA Disk Driver
 - [] Minimal File System (FAT)
