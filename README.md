@@ -8,7 +8,7 @@
 - [x] Basic Screen Driver
 - [x] Physical Memory Manager
 - [x] Heap Allocator
-- [] Interrupt Service Routines
+- [x] Interrupt Service Routines
 - [] ATA Disk Driver
 - [] Minimal File System (FAT)
 - [] MNIST Parser

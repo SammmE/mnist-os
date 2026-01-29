@@ -13,7 +13,14 @@
 
 // Public kernel API
 void clear_screen();
-void kprint_at(char *message, int col, int row);
-void kprint(char *message);
+void kprint_at(const char *message, int col, int row);
+void kprint(const char *message);
+
+// Cursor management
+int get_cursor_offset();
+void set_cursor_offset(int offset);
+int get_offset(int col, int row);
+int get_offset_row(int offset);
+int get_offset_col(int offset);
 
 #endif
