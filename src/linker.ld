@@ -7,7 +7,7 @@ SECTIONS {
 
     .text : {
         /* Ensure kernel_entry is first */
-        src/kernel_entry.o(.text)
+        *kernel_entry.o(.text)
         *(.text)
     }
 
