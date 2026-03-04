@@ -1,38 +1,55 @@
-BUILD_DIR = build
-SRC_DIR = src
-
 AS = nasm
 CC = gcc
 LD = ld
+OBJCOPY = objcopy
 
-CFLAGS = -m32 -ffreestanding -c -Os -nostdlib -fno-pie
-LDFLAGS = -m elf_i386 -T $(SRC_DIR)/linker.ld -nostdlib
+CFLAGS = -m32 -ffreestanding -O2 -Wall -Wextra -fno-pie -fno-stack-protector -nostdlib
+LDFLAGS = -m elf_i386 -T src/linker.ld
 
-all: $(BUILD_DIR)/os-image.bin
+SRC_DIR = src
+BUILD_DIR = build
 
-run: all
-	qemu-system-i386 -drive format=raw,file=$(BUILD_DIR)/os-image.bin,index=0,if=floppy -m 128M
+# The final disk image
+OS_IMAGE = $(BUILD_DIR)/os.bin
 
-$(BUILD_DIR)/os-image.bin: $(BUILD_DIR)/boot.bin $(BUILD_DIR)/kernel.bin
-	cat $(BUILD_DIR)/boot.bin $(BUILD_DIR)/kernel.bin > $(BUILD_DIR)/os-image.bin
-	# Ensure the binary is large enough for the floppy disk read (15 sectors)
-	truncate -s 8192 $(BUILD_DIR)/os-image.bin
+# Separate binaries
+BOOT_BIN = $(BUILD_DIR)/boot.bin
+KERNEL_BIN = $(BUILD_DIR)/kernel.bin
+KERNEL_ELF = $(BUILD_DIR)/kernel.elf
 
-$(BUILD_DIR)/boot.bin: $(SRC_DIR)/boot.asm | $(BUILD_DIR)
-	$(AS) -f bin $(SRC_DIR)/boot.asm -o $(BUILD_DIR)/boot.bin
+# Object files for kernel
+C_SOURCES = $(wildcard $(SRC_DIR)/*.c)
+C_OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(C_SOURCES))
+OBJS = $(BUILD_DIR)/kernel_entry.o $(C_OBJS)
 
-$(BUILD_DIR)/kernel_entry.o: $(SRC_DIR)/kernel_entry.asm | $(BUILD_DIR)
-	$(AS) -f elf32 $(SRC_DIR)/kernel_entry.asm -o $(BUILD_DIR)/kernel_entry.o
-
-$(BUILD_DIR)/kernel.o: $(SRC_DIR)/kernel.c | $(BUILD_DIR)
-	$(CC) $(CFLAGS) $(SRC_DIR)/kernel.c -o $(BUILD_DIR)/kernel.o
-
-$(BUILD_DIR)/kernel.bin: $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o $(SRC_DIR)/linker.ld | $(BUILD_DIR)
-	$(LD) $(LDFLAGS) -o $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel_entry.o $(BUILD_DIR)/kernel.o
-	objcopy -O binary $(BUILD_DIR)/kernel.elf $(BUILD_DIR)/kernel.bin
+all: $(OS_IMAGE)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
+$(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
+	cat $(BOOT_BIN) $(KERNEL_BIN) > $@
+	dd if=/dev/zero bs=512 count=15 >> $@ # if there's not enough sectors
+
+$(BOOT_BIN): $(SRC_DIR)/boot.asm | $(BUILD_DIR)
+	$(AS) -f bin $< -o $@
+
+$(KERNEL_BIN): $(KERNEL_ELF)
+	$(OBJCOPY) -O binary $< $@
+
+$(KERNEL_ELF): $(OBJS) src/linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(OBJS)
+
+$(BUILD_DIR)/kernel_entry.o: $(SRC_DIR)/kernel_entry.asm | $(BUILD_DIR)
+	$(AS) -f elf32 $< -o $@
+
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+run: all
+	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE)
+
 clean:
 	rm -rf $(BUILD_DIR)
+
+.PHONY: all run clean
