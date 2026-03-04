@@ -7,7 +7,7 @@ void ata_read_sector(uint32_t lba, uint8_t *buffer) {
   port_byte_out(ATA_SECTOR_COUNT_PORT, 1);
 
   port_byte_out(ATA_LBA_LOW_PORT, lba & 0xFF);
-  port_byte_out(ATA_LBA_MID_PORT, ((lba >> 8) & 0xFF);
+  port_byte_out(ATA_LBA_MID_PORT, ((lba >> 8) & 0xFF));
   port_byte_out(ATA_LBA_HIGH_PORT, ((lba >> 16) & 0xFF));
 
   port_byte_out(ATA_COMMAND_PORT, 0x20);
