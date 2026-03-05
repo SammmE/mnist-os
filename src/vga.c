@@ -6,10 +6,9 @@ static int cursor_offset = 0;
 void clear_screen() {
   unsigned char *VGA = (unsigned char *)VGA_ADDRESS;
 
-  for (int i = 0; i < 320 * 200; i++) {
+  for (int i = 0; i < 80 * 25 * 2; i++) {
     VGA[i] = 0;
   }
-
   cursor_offset = 0;
 }
 
@@ -36,6 +35,11 @@ void print_string(const char *str) {
   }
 }
 
+void println_string(const char *str) {
+  print_string(str);
+  print_char('\n');
+}
+
 void print_hex_byte(uint8_t byte) {
   char *hex_digits = "0123456789ABCDEF";
 
@@ -48,6 +52,11 @@ void print_hex_byte(uint8_t byte) {
   print_char(hex_digits[low]);
 }
 
+void println_hex_byte(uint8_t byte) {
+  print_hex_byte(byte);
+  print_char('\n');
+}
+
 void print_hex(uint32_t value) {
   char *hex_digits = "0123456789ABCDEF";
 
@@ -57,4 +66,9 @@ void print_hex(uint32_t value) {
     uint8_t nibble = (value >> i) & 0x0F;
     print_char(hex_digits[nibble]);
   }
+}
+
+void println_hex(uint32_t value) {
+  print_hex(value);
+  print_char('\n');
 }
