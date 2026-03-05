@@ -59,10 +59,11 @@ struct DirectoryEntry {
   uint32_t size;
 } __attribute__((packed));
 
-void fat32_init(void);
+void fat32_init();
 
 uint32_t cluster_to_lba(uint32_t cluster);
 
-void fat32_print_stats(void);
+void fat32_read_file(struct DirectoryEntry *file, uint8_t *out_buffer);
+int fat32_find_file(const char *filename, struct DirectoryEntry *out_entry);
 
 #endif // FAT32_H

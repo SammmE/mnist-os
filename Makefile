@@ -3,7 +3,7 @@ CC = gcc
 LD = ld
 OBJCOPY = objcopy
 
-CFLAGS = -m32 -ffreestanding -O2 -Wall -Wextra -fno-pie -fno-stack-protector -nostdlib
+CFLAGS = -m32 -ffreestanding -O2 -Wall -Wextra -fno-pie -fno-stack-protector -nostdlib -mno-sse -mno-mmx -mgeneral-regs-only
 LDFLAGS = -m elf_i386 -T src/linker.ld
 
 SRC_DIR = src
@@ -41,28 +41,25 @@ $(KERNEL_ELF): $(OBJS) src/linker.ld
 
 $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
-
 $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
-	@echo "Creating 64MB empty disk image..."
-	dd if=/dev/zero of=$@ bs=1M count=64
+	@echo "1. Creating solid 65MB Master disk image..."
+	dd if=/dev/zero of=$@ bs=1M count=65
 	
-	@echo "Formatting with FAT32..."
-
-	# -F 32 = FAT32, -i = Volume ID, -I = Ignore partitions
-	mkfs.fat -F 32 -I $@
+	@echo "2. Creating and Formatting FAT32 partition..."
+	dd if=/dev/zero of=$(BUILD_DIR)/fat32.img bs=1M count=64
+	mkfs.fat -F 32 -I $(BUILD_DIR)/fat32.img
 	
-	@echo "Copying files from ./$(DISK_SRC) into the image..."
+	@echo "3. Copying files into FAT32 image..."
+	mkdir -p $(DISK_SRC)
+	mcopy -i $(BUILD_DIR)/fat32.img -s $(DISK_SRC)/* ::/
 
-	# mcopy -i [image] -s [source] ::[destination]
-	mcopy -i $@ -s $(DISK_SRC)/* ::/
-
-	@echo "Injecting Bootloader and Kernel into the start of the disk..."
-
-	# conv=notrunc - don't delete the rest of the 64MB file
-	dd if=$(BOOT_BIN) of=$@ conv=notrunc
-
-	# Start writing kernel at Sector 1 (after MBR)
-	dd if=$(KERNEL_BIN) of=$@ seek=1 conv=notrunc
+	@echo "4. Injecting pieces into the Master Disk..."
+	# Write MBR at Sector 0
+	dd if=$(BOOT_BIN) of=$@ bs=512 seek=0 conv=notrunc
+	# Write Kernel at Sector 1
+	dd if=$(KERNEL_BIN) of=$@ bs=512 seek=1 conv=notrunc
+	# Paste the FAT32 volume at exactly Sector 2048
+	dd if=$(BUILD_DIR)/fat32.img of=$@ bs=512 seek=2048 conv=notrunc
 
 run: all
 	qemu-system-i386 -drive format=raw,file=$(OS_IMAGE)

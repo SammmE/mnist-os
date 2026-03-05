@@ -12,7 +12,7 @@ start:
 
     ; Read kernel
     mov ah, 0x02
-    mov al, 15
+    mov al, 45
     mov ch, 0
     mov dh, 0
     mov cl, 2
@@ -88,5 +88,16 @@ CODE_SEG equ gdt_code - gdt_start
 DATA_SEG equ gdt_data - gdt_start
 BOOT_DRIVE db 0
 
+times 446 - ($ - $$) db 0
+
+; add a partition table
+db 0x80             ; bootable
+db 0x00, 0x01, 0x00 ; CHS start
+db 0x0C             ; part type
+db 0x00, 0x01, 0x00 ; CHS end
+dd 2048             ; LBA
+dd 131072           ; sectors
+
 times 510 - ($ - $$) db 0
+
 dw 0xAA55
