@@ -34,9 +34,9 @@ void fat32_init() {
   fat32_root_cluster = bpb->root_cluster;
 
   print_string("Bytes per sector: ");
-  print_hex(fat32_bytes_per_sector);
+  println_hex(fat32_bytes_per_sector);
   print_string("\nSectors per cluster: ");
-  print_hex_byte(fat32_sectors_per_cluster);
+  println_hex_byte(fat32_sectors_per_cluster);
 }
 
 uint32_t cluster_to_lba(uint32_t cluster) {
