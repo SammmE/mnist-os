@@ -3,7 +3,7 @@ CC = gcc
 LD = ld
 OBJCOPY = objcopy
 
-CFLAGS = -m32 -ffreestanding -O2 -Wall -Wextra -fno-pie -fno-stack-protector -nostdlib -mno-sse -mno-mmx -mgeneral-regs-only
+CFLAGS = -m32 -ffreestanding -O2 -Wall -Wextra -fno-pie -fno-stack-protector -nostdlib -mno-sse -mno-mmx
 LDFLAGS = -m elf_i386 -T src/linker.ld
 
 SRC_DIR = src
@@ -44,11 +44,11 @@ $(KERNEL_BIN): $(KERNEL_ELF)
 $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
 	@echo "1. Creating solid 65MB Master disk image..."
 	dd if=/dev/zero of=$@ bs=1M count=65
-	
+
 	@echo "2. Creating and Formatting FAT32 partition..."
 	dd if=/dev/zero of=$(BUILD_DIR)/fat32.img bs=1M count=64
 	mkfs.fat -F 32 -I $(BUILD_DIR)/fat32.img
-	
+
 	@echo "3. Copying files into FAT32 image..."
 	mkdir -p $(DISK_SRC)
 	mcopy -i $(BUILD_DIR)/fat32.img -s $(DISK_SRC)/* ::/
