@@ -13,6 +13,7 @@ float math_relu(float x);
 void math_relu_layer(float *layer,
                      int size); // relu on the entire array, in-place
 float math_sigmoid(float x);    // 1 / (1 + e^-x)
+void math_sigmoid_layer(float *layer, int size); // sigmoid an entire array, in place
 void math_softmax(float *logits, int size);
 
 // lin alg
@@ -23,5 +24,7 @@ void math_add_bias(float *target, const float *bias,
 
 // helpers
 int math_argmax(const float *array, int size); // return highest index
+float math_max_array(const float *array, int size); // return highest value
+void math_clear_array(float *array, int size); // clear an array
 
 #endif // !MATH_H

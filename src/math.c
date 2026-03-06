@@ -49,6 +49,12 @@ void math_relu_layer(float *layer, int size) {
 
 float math_sigmoid(float x) { return 1.0f / (1.0f + math_expf(-x)); }
 
+void math_sigmoid_layer(float *layer, int size) {
+  for (int i = 0; i < size; i++) {
+    layer[i] = math_sigmoid(layer[i]);
+  }
+}
+
 void math_softmax(float *logits, int size) {
   float max_val = logits[0];
   for (int i = 1; i < size; i++) {
@@ -85,9 +91,8 @@ void math_matmul(const float *A, const float *B, float *C, int rows_A,
 }
 
 void math_add_bias(float *target, const float *bias, int size) {
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; i++)
     target[i] += bias[i];
-  }
 }
 
 // helpers
@@ -102,4 +107,22 @@ int math_argmax(const float *array, int size) {
     }
   }
   return idx;
+}
+
+float math_max_array(const float *array, int size) {
+  float val = array[0];
+  int idx = 0;
+
+  for (int i = 1; i < size; i++) {
+    if (array[i] > val) {
+      idx = i;
+      val = array[i];
+    }
+  }
+  return val;
+}
+
+void math_clear_array(float *array, int size) {
+  for (int i = 0; i < size; i++)
+    array[i] = 0;
 }
