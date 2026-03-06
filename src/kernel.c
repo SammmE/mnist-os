@@ -1,9 +1,11 @@
 #include "fat32.h"
 #include "math.h"
+#include "nn.h"
 #include "vga.h"
 
 float weights[7510];
 float image[64];
+float output_layer[10];
 
 float *W1;
 float *b1;
@@ -27,7 +29,6 @@ void kernel_main() {
     // W_2 = 100 * 10 = 1000 floats
     // W_1 =            10 floats
     // TOTAL =          30040 bytes
-    uint8_t file_data[30040];
 
     fat32_read_file(&test_file, (uint8_t *)weights);
 
@@ -50,4 +51,18 @@ void kernel_main() {
   clear_screen();
 
   println_image(image);
+
+  infer_number(image, W1, b1, W2, b2, output_layer);
+
+  for (int i = 0; i < 10; i++) {
+    uint32_t percent = (uint32_t)(output_layer[i] * 100.0f);
+    if (percent) {
+      print_char(i + '0');
+      print_string(": ");
+
+      for (int i = 0; i < percent / 10; i++)
+        print_char('*');
+      println_string("");
+    }
+  }
 }
