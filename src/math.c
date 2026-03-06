@@ -111,11 +111,9 @@ int math_argmax(const float *array, int size) {
 
 float math_max_array(const float *array, int size) {
   float val = array[0];
-  int idx = 0;
 
   for (int i = 1; i < size; i++) {
     if (array[i] > val) {
-      idx = i;
       val = array[i];
     }
   }
