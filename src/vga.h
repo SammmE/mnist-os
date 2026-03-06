@@ -14,5 +14,7 @@ void print_hex_byte(uint8_t byte);
 void println_hex_byte(uint8_t byte);
 void print_hex(uint32_t value);
 void println_hex(uint32_t value);
+void print_image(const float *image);
+void println_image(const float *image);
 
 #endif // !VGA_H

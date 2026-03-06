@@ -72,3 +72,28 @@ void println_hex(uint32_t value) {
   print_hex(value);
   print_char('\n');
 }
+
+void print_image(const float *image) {
+  const char *density = " .:-=+*#%@@@@@@@";
+
+  for (int i = 0; i < 64; i++) {
+    int val = (int)image[i];
+
+    if (val < 0)
+      val = 0;
+    if (val > 15)
+      val = 15;
+
+    print_char(density[val]);
+    print_char(density[val]);
+
+    if ((i & 7) == 7) {
+      print_char('\n');
+    }
+  }
+}
+
+void println_image(const float *image) {
+  print_image(image);
+  print_char('\n');
+}

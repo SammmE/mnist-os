@@ -46,4 +46,8 @@ void kernel_main() {
     fat32_read_file(&image_file, (uint8_t *)image);
     println_string("Image loaded successfully!");
   }
+
+  clear_screen();
+
+  println_image(image);
 }
