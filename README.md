@@ -1,20 +1,19 @@
-
 # MNIST-OS
 
-A bare-metal x86 32-bit operating system that performs handwritten digit classification using a neural network. The OS boots directly on hardware, loads a pre-trained model from a FAT32 filesystem, and runs inference to classify MNIST digits.
+A bare-metal x86 32-bit operating system that performs handwritten digit classification using a neural network. The OS boots directly on hardware, loads a training dataset from a FAT32 filesystem, trains the model on-device, and then runs inference on a held-out test digit.
 
 ## Overview
 
-MNIST-OS demonstrates neural network inference in a minimal operating system environment without relying on any existing OS kernel or standard libraries. Because I decided not to use any external libraries, the system includes a custom bootloader, FAT32 filesystem driver, VGA text-mode display, and a neural network implementation. All were written from scratch in assembly and C.
+MNIST-OS demonstrates neural network training and inference in a minimal operating system environment without relying on any existing OS kernel or standard libraries. The project includes a custom bootloader, FAT32 filesystem driver, VGA text-mode display, and a neural network implementation written from scratch in assembly and C.
 
 ## Requirements
 
 - NASM assembler
-- GCC (with 32-bit support)
-- GNU binutils (ld, objcopy)
-- mtools (for FAT32 image manipulation)
-- QEMU (for emulation)
-- Python 3 with scikit-learn and numpy (for training)
+- GCC with 32-bit support
+- GNU binutils (`ld`, `objcopy`)
+- `mtools` for FAT32 image manipulation
+- QEMU for emulation
+- Python 3 with `numpy` and `scikit-learn` for dataset export
 
 On Debian/Ubuntu systems:
 ```bash
@@ -23,22 +22,26 @@ sudo apt install nasm gcc-multilib binutils mtools qemu-system-x86 python3-sklea
 
 ## Building and Running
 
-### Generate Model Weights
+### Export the Dataset
 
-The neural network must be trained before building the OS image:
+Python prepares the training and test data, normalizes it, and writes FAT32-friendly binary blobs into `disk/`:
 
 ```bash
-cd model
-python3 bins.py
-mv WEIGHTS.BIN ../disk
-mv IMAGE.BIN ../disk
+make dataset
 ```
 
-This script:
-- Trains a 2-layer neural network on the MNIST digits dataset
-- Exports the model weights and biases to `WEIGHTS.BIN`
-- Exports a test image to `IMAGE.BIN`
-- Both files are placed in the `disk/` directory
+You can tune the exported configuration directly:
+
+```bash
+python3 model/bins.py --output-dir disk --hidden-size 32 --epochs 8 --learning-rate 0.015 --sample-index 4
+```
+
+The exporter writes:
+- `CONFIG.BIN` with model dimensions, dataset counts, epoch count, selected sample, and learning rate
+- `TRAIN.BIN` with float32 training features
+- `TRNLABEL.BIN` with uint8 training labels
+- `TEST.BIN` with float32 test features
+- `TSTLABEL.BIN` with uint8 test labels
 
 ### Build the OS
 
@@ -46,7 +49,7 @@ This script:
 make
 ```
 
-This creates a 65MB disk image at `build/os.img`
+This creates a 96MB disk image at `build/os.img`.
 
 ### Run in QEMU
 
@@ -54,25 +57,18 @@ This creates a 65MB disk image at `build/os.img`
 make run
 ```
 
-The system will boot, load the neural network weights and test image from the FAT32 partition, perform inference, and display the input digit along with classification probabilities.
+The system boots, loads the dataset from the FAT32 partition, initializes the model, trains it in the kernel, and then displays:
+- training hyperparameters and elapsed training time
+- per-epoch confidence and train/test accuracy
+- the selected test image
+- the final prediction and inference timing
 
-## Changing the Test Image
+## Changing the Training Run
 
-To classify a different digit, modify the `IMAGE` constant in `model/bins.py`:
-
-```python
-IMAGE = 0  # Change to any index in the test set
-```
-
-Then regenerate the binaries and rebuild:
+Regenerate the dataset binaries with different hyperparameters or a different held-out image, then rebuild and run:
 
 ```bash
-cd model
-python3 bins.py
-mv WEIGHTS.BIN ../disk
-mv IMAGE.BIN ../disk
-cd ..
-make clean
+python3 model/bins.py --output-dir disk --sample-index 12 --hidden-size 48 --epochs 10 --learning-rate 0.01
 make run
 ```
 
@@ -80,65 +76,74 @@ make run
 
 ### Boot Process
 
-1. **BIOS** loads the first 512 bytes (bootloader) from `src/boot.asm` to memory address 0x7C00
-2. **Bootloader** loads 45 sectors containing the kernel starting at sector 2
-3. **Bootloader** enables the A20 line, sets up a Global Descriptor Table, and switches to 32-bit protected mode
-4. **Kernel** initializes the FPU, parses the FAT32 partition, loads the model and image files, and performs inference
+1. BIOS loads the first 512 bytes (bootloader) from `src/boot.asm` to memory address `0x7C00`
+2. The bootloader loads the kernel from disk and switches into 32-bit protected mode
+3. The kernel initializes the FPU, timer, and FAT32 filesystem
+4. The kernel loads the dataset/config files, trains the network, and performs inference on a held-out sample
 
 ### Filesystem
 
-The OS includes a minimal FAT32 driver (`src/fat32.c`) that can:
+The OS includes a minimal FAT32 driver in `src/fat32.c` that can:
 - Parse the MBR to locate the FAT32 partition
 - Read the BIOS Parameter Block
 - Traverse directory entries in the root directory
 - Read files by following cluster chains
-- NOTE: This fat.c is the most basic form, just enough utility to read a load known files, do not use it in your OS
 
-The FAT32 partition begins at sector 2048 and contains the neural network weights and test image as binary files.
+The FAT32 partition begins at sector 2048 and contains the exported dataset and config binaries.
 
 ### Neural Network
 
-The inference engine (`src/nn.c`) implements a 2-layer feedforward network:
+The kernel-side neural network engine in `src/nn.c` is configured at runtime:
 
-- **Input layer**: 64 features (8×8 grayscale pixel values)
-- **Hidden layer**: 100 neurons with ReLU activation
-- **Output layer**: 10 neurons (digits 0-9) with softmax activation
+- Input layer: 64 features (8x8 grayscale pixels)
+- Hidden layer: configurable, exported from Python
+- Output layer: 10 neurons with softmax activation
 
 Network architecture:
+
+```text
+Input(64) -> FC -> ReLU(H) -> FC + Softmax(10)
 ```
-Input(64) -> FC -> ReLU(100) -> FC + Softmax(10)
-```
 
-Mathematical operations (`src/math.c`) are implemented using x87 FPU instructions for floating-point matrix multiplication, bias addition, ReLU, and softmax. They're as efficient as I can get them to be.
+The kernel initializes weights randomly, trains with stochastic gradient descent, and reports per-epoch statistics on the VGA console.
 
-### Model File Format
+### Dataset File Format
 
-**WEIGHTS.BIN** (30,040 bytes):
-- W1: 6,400 floats (64×100 weight matrix)
-- b1: 100 floats (bias vector)
-- W2: 1,000 floats (100×10 weight matrix)
-- b2: 10 floats (bias vector)
+`CONFIG.BIN` stores:
+- magic/version for validation
+- input, hidden, and output sizes
+- train/test sample counts
+- epoch count
+- displayed test-sample index
+- learning rate
 
-**IMAGE.BIN** (256 bytes):
-- 64 floats representing 8×8 pixel values
+`TRAIN.BIN` stores `train_count * input_size` float32 values.
 
-All values are stored as 32-bit little-endian IEEE 754 floating-point numbers.
+`TRNLABEL.BIN` stores `train_count` uint8 labels.
+
+`TEST.BIN` stores `test_count * input_size` float32 values.
+
+`TSTLABEL.BIN` stores `test_count` uint8 labels.
+
+All floating-point values are stored as 32-bit little-endian IEEE 754 values.
 
 ### Display
 
-The VGA driver (`src/vga.c`) uses text mode to:
-- Display boot messages and filesystem information
-- Render the input image as ASCII characters
-- Show classification probabilities as horizontal bar charts
+The VGA driver in `src/vga.c` uses text mode to:
+- Display boot and filesystem information
+- Show per-epoch training statistics
+- Render the selected test image as ASCII characters
+- Show the final prediction and timing
 
 ## Technical Details
 
-- **Architecture**: x86 (32-bit protected mode)
-- **Bootloader**: Single-stage, written in NASM assembly
-- **Kernel**: Freestanding C with custom entry point, no standard library
-- **Compiler flags**: `-ffreestanding -nostdlib -fno-pie -fno-stack-protector`
-- **Disk layout**: MBR at sector 0, kernel at sector 1, FAT32 partition at sector 2048
-- **Test accuracy**: ~95% on MNIST test set (varies by training run)
+- Architecture: x86 (32-bit protected mode)
+- Bootloader: single-stage, written in NASM assembly
+- Kernel: freestanding C with a custom entry point and no standard library
+- Compiler flags: `-ffreestanding -nostdlib -fno-pie -fno-stack-protector`
+- Disk layout: MBR at sector 0, kernel at sector 1, FAT32 partition at sector 2048
+- Disk size: 96MB master image with a 95MB FAT32 partition
+- Accuracy: varies by training run and exported hyperparameters
 
 ## License
 

@@ -12,6 +12,8 @@ DISK_SRC = disk
 
 # disk image
 OS_IMAGE = $(BUILD_DIR)/os.img
+DISK_SIZE_MB = 96
+FAT32_SIZE_MB = 95
 
 BOOT_BIN = $(BUILD_DIR)/boot.bin
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
@@ -23,6 +25,9 @@ C_OBJS = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(C_SOURCES))
 OBJS = $(BUILD_DIR)/kernel_entry.o $(C_OBJS)
 
 all: $(OS_IMAGE)
+
+dataset:
+	uv run bins.py --output-dir disk
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -42,11 +47,11 @@ $(KERNEL_ELF): $(OBJS) src/linker.ld
 $(KERNEL_BIN): $(KERNEL_ELF)
 	$(OBJCOPY) -O binary $< $@
 $(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
-	@echo "1. Creating solid 65MB Master disk image..."
-	dd if=/dev/zero of=$@ bs=1M count=65
+	@echo "1. Creating solid $(DISK_SIZE_MB)MB Master disk image..."
+	dd if=/dev/zero of=$@ bs=1M count=$(DISK_SIZE_MB)
 
 	@echo "2. Creating and Formatting FAT32 partition..."
-	dd if=/dev/zero of=$(BUILD_DIR)/fat32.img bs=1M count=64
+	dd if=/dev/zero of=$(BUILD_DIR)/fat32.img bs=1M count=$(FAT32_SIZE_MB)
 	mkfs.fat -F 32 -I $(BUILD_DIR)/fat32.img
 
 	@echo "3. Copying files into FAT32 image..."
@@ -67,4 +72,4 @@ run: all
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all run clean
+.PHONY: all dataset run clean

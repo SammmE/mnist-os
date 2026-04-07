@@ -104,17 +104,28 @@ uint32_t fat32_get_next_cluster(uint32_t current_cluster) {
 
 void fat32_read_file(struct DirectoryEntry *file, uint8_t *out_buffer) {
   uint32_t current_cluster = (file->cluster_high << 16) | file->cluster_low;
-
   uint8_t *write_ptr = out_buffer;
+  uint32_t bytes_remaining = file->size;
+  uint8_t sector_buffer[512];
 
   // Loop until 0x0FFFFFF8 or higher
-  while (current_cluster < 0x0FFFFFF8) {
+  while (current_cluster < 0x0FFFFFF8 && bytes_remaining > 0) {
     uint32_t lba = cluster_to_lba(current_cluster);
 
     // Read all sectors in cluster
     for (int i = 0; i < fat32_sectors_per_cluster; i++) {
-      ata_read_sector(lba + i, write_ptr);
-      write_ptr += 512;
+      uint32_t chunk_size = bytes_remaining < 512 ? bytes_remaining : 512;
+
+      ata_read_sector(lba + i, sector_buffer);
+      for (uint32_t j = 0; j < chunk_size; j++) {
+        write_ptr[j] = sector_buffer[j];
+      }
+
+      write_ptr += chunk_size;
+      bytes_remaining -= chunk_size;
+      if (bytes_remaining == 0) {
+        break;
+      }
     }
 
     current_cluster = fat32_get_next_cluster(current_cluster);

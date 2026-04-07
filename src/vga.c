@@ -1,5 +1,6 @@
 #include "vga.h"
 #include "types.h"
+#include "uint64.h"
 
 static int cursor_offset = 0;
 
@@ -40,6 +41,57 @@ void println_string(const char *str) {
   print_char('\n');
 }
 
+static void print_uint64_recursive(uint64_t value) {
+  if (value >= 10) {
+    print_uint64_recursive(uint64_div_u32(value, 10));
+  }
+  print_char('0' + uint64_mod_u32(value, 10));
+}
+
+void print_uint32(uint32_t value) { print_uint64(value); }
+
+void println_uint32(uint32_t value) {
+  print_uint32(value);
+  print_char('\n');
+}
+
+void print_uint64(uint64_t value) {
+  if (value == 0) {
+    print_char('0');
+    return;
+  }
+
+  print_uint64_recursive(value);
+}
+
+void println_uint64(uint64_t value) {
+  print_uint64(value);
+  print_char('\n');
+}
+
+void print_fixed_uint64(uint64_t whole, uint64_t fraction, int digits) {
+  uint64_t divisor = 1;
+
+  print_uint64(whole);
+  if (digits <= 0) {
+    return;
+  }
+
+  print_char('.');
+  for (int i = 1; i < digits; i++) {
+    divisor *= 10;
+  }
+
+  for (int i = 0; i < digits; i++) {
+    uint64_t digit = uint64_div_u32(fraction, (uint32_t)divisor);
+    print_char('0' + digit);
+    fraction = uint64_mod_u32(fraction, (uint32_t)divisor);
+    if (divisor > 1) {
+      divisor = uint64_div_u32(divisor, 10);
+    }
+  }
+}
+
 void print_hex_byte(uint8_t byte) {
   char *hex_digits = "0123456789ABCDEF";
 
@@ -77,7 +129,7 @@ void print_image(const float *image) {
   const char *density = " .:-=+*#%@@@@@@@";
 
   for (int i = 0; i < 64; i++) {
-    int val = (int)image[i];
+    int val = (int)(image[i] * 15.0f);
 
     if (val < 0)
       val = 0;
