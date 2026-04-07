@@ -1,3 +1,5 @@
 build
-disk/WEIGHTS.BIN
-disk/IMAGE.BIN
+WEIGHTS.BIN
+IMAGE.BIN
+.venv/
+disk/
